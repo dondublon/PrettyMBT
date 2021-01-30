@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from src.event import FSM
+from src.fsm import FSM
 
 helloworld_fsm = FSM()
 
