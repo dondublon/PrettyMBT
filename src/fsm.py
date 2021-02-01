@@ -1,10 +1,11 @@
 from typing import List, Tuple, Dict, Callable, Any
 from random import choice
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 Path = List[Tuple]
 State = Dict  # dataclass variable: value
 WalkResult = Any
+
 
 class FSM(object):
     def __init__(self):
@@ -54,9 +55,7 @@ class FSM(object):
         return unique_states, transitions
 
     def get_state(self, obj: dataclass):
-        result = {}
-        for field in obj.__dataclass_fields__:
-            result[field] = getattr(obj, field)
+        result = asdict(obj)
         return result
 
     def dump_plantuml(self, walk_result: WalkResult):

@@ -3,13 +3,14 @@ from src.fsm import FSM
 
 helloworld_fsm = FSM()
 
+
 @dataclass
 class HelloWorld(object):
     switch: bool
     value: int  # from 0 to 2
 
     def initial_state(self):
-        # TODO seems no need, values are reauired in constructor.
+        # TODO seems no need, values are required in constructor.
         self.switch = False
         self.value = 0
 
@@ -19,4 +20,4 @@ class HelloWorld(object):
 
     @helloworld_fsm.event([1, 2, 3])
     def increase_value(self, input):
-        self.value = (self.value + input) % 3
+        self.value = (self.value + input) % 4
