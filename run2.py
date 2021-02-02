@@ -5,15 +5,16 @@ from src.fsm import FsmMarkup
 
 
 class HelloworldFsmMarkup(FsmMarkup):
-    def __init__(self, model: Type[HelloWorld2]):
-        super().__init__(model)
-        self.add_event(model.turn_switch, None, None)
-        self.add_event(model.increase_value, [1, 2, 3])
-        self.state_values['Switch'] = lambda model_: model_.switch
-        self.state_values['Value'] = lambda model_: model_.value
+    def __init__(self):
+        super().__init__()
+        self.model = HelloWorld2
+        self.add_event(self.model.turn_switch, None, None)
+        self.add_event(self.model.increase_value, [1, 2, 3])
+        self.state_values['Switch'] = lambda model_obj: model_obj.switch
+        self.state_values['Value'] = lambda model_obj: model_obj.value
 
 
-fsm = HelloworldFsmMarkup(HelloWorld2)
+fsm = HelloworldFsmMarkup()
 print("Random path:")
 path = fsm.get_random_path(16)
 pprint(path)

@@ -102,8 +102,8 @@ class FsmMarkup(FSM):
     """To subclass for each model. Interface as dataclass.
     """
 
-    def __init__(self, model: ClassVar):
-        self.model = model
+    def __init__(self):
+        self.model = None
         self.state_values: Dict[str, GetStateValue] = {}
         super().__init__()  # <- self.events here
         # Fill self.events here in ancestors.
