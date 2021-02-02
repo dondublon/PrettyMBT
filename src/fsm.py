@@ -1,10 +1,12 @@
-from typing import List, Tuple, Dict, Callable, Any, NamedTuple, ClassVar
+from typing import List, Tuple, Dict, Callable, Any, NamedTuple
 from random import choice
 from dataclasses import dataclass, asdict
 
 State = Dict  # dataclass variable: value
 StatePredicate = Callable[[State], bool]
-Check = Tuple[StatePredicate, Callable[[], Any]]
+StateObjFunction = Callable
+Check = Tuple[StatePredicate, Callable]
+CheckObj = Tuple[StateObjFunction, Callable]
 Path = List[Tuple[Callable, Any, List[Check]]]
 # For separated model:
 Behavior = object
@@ -79,23 +81,22 @@ class FSM(object):
         result = asdict(obj)
         return result
 
-    def dump_plantuml(self, walk_result: WalkResult):
-        text = ['@startuml']
-        text.append('[*] --> State_0')
+    def get_plantuml(self, walk_result: WalkResult):
+        yield '@startuml'
+        yield '[*] --> State_0'
         # TODO dump initial state to the black circle
         for state_num, state in enumerate(walk_result[0]):
             for state_var, state_value in state.items():
-                text.append(f'State_{state_num} : {state_var}={state_value}')
+                yield f'State_{state_num} : {state_var}={state_value}'
         for transition in walk_result[1]:
             in_vertex, out_vertex, proc, input, checks_before = transition
-            text.append(f'State_{in_vertex} --> State_{out_vertex} : {proc.__name__} {input if input else ""}')
+            yield f'State_{in_vertex} --> State_{out_vertex} : {proc.__name__} {input if input else ""}'
             if checks_before:
-                text.append('note on link')
+                yield 'note on link'
                 for check_description in checks_before:
-                    text.append(f"Check before: {check_description}")
-                text.append('end note')
-        text.append('@enduml')
-        return '\n'.join(text)
+                    yield f"Check before: {check_description}"
+                yield 'end note'
+        yield '@enduml'
 
 
 class FsmMarkup(FSM):
@@ -113,10 +114,11 @@ class FsmMarkup(FSM):
         result = {field: get_state_value(obj) for field, get_state_value in self.state_values.items()}
         return result
 
-    def add_event(self, class_method, inputs: List = None, checks_before: List[Check] = None):
+    def add_event(self, class_method, inputs: List = None, checks_before: List[CheckObj] = None):
         # TODO checks before
         self.events.append(Event(class_method, inputs, checks_before))
 
     def get_state(self, obj):
         result = self.asdict(obj)
         return result
+
