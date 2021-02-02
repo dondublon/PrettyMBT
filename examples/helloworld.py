@@ -21,3 +21,19 @@ class HelloWorld(object):
     @helloworld_fsm.event([1, 2, 3])
     def increase_value(self, input):
         self.value = (self.value + input) % 4
+
+
+class HelloWorld2(object):
+    def __init__(self):
+        self.switch = False
+        self.value = 0
+
+    def turn_switch(self, input):
+        self.switch = not self.switch
+
+    def increase_value(self, input):
+        self.value = (self.value + input) % 4
+
+    def get_state(self, obj):
+        result = obj.as_dict()
+        return result

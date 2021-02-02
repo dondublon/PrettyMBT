@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict, Callable, Any, NamedTuple
+from typing import List, Tuple, Dict, Callable, Any, NamedTuple, ClassVar
 from random import choice
 from dataclasses import dataclass, asdict
 
@@ -6,6 +6,9 @@ State = Dict  # dataclass variable: value
 StatePredicate = Callable[[State], bool]
 Check = Tuple[StatePredicate, Callable[[], Any]]
 Path = List[Tuple[Callable, Any, List[Check]]]
+# For separated model:
+Behavior = object
+GetStateValue = Callable[[Behavior], Any]
 
 
 class Event(NamedTuple):
@@ -55,6 +58,7 @@ class FSM(object):
                 for check_state, check_body in before_checks:
                     if check_state(obj):
                         checks_before_to_scheme.append(check_body.__name__)
+                        # noinspection PyArgumentList
                         check_body(obj)
             proc(obj, input)
             new_state = self.get_state(obj)
@@ -92,3 +96,27 @@ class FSM(object):
                 text.append('end note')
         text.append('@enduml')
         return '\n'.join(text)
+
+
+class FsmMarkup(FSM):
+    """To subclass for each model. Interface as dataclass.
+    """
+
+    def __init__(self, model: ClassVar):
+        self.model = model
+        self.state_values: Dict[str, GetStateValue] = {}
+        super().__init__()  # <- self.events here
+        # Fill self.events here in ancestors.
+        # Fill self.state_values here
+
+    def asdict(self, obj) -> Dict:
+        result = {field: get_state_value(obj) for field, get_state_value in self.state_values.items()}
+        return result
+
+    def add_event(self, class_method, inputs: List = None, checks_before: List[Check] = None):
+        # TODO checks before
+        self.events.append(Event(class_method, inputs, checks_before))
+
+    def get_state(self, obj):
+        result = self.asdict(obj)
+        return result
