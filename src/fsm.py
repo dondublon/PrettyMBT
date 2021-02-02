@@ -40,7 +40,7 @@ class FSM(object):
             if event.inputs:
                 input = choice(event.inputs)
             else:
-                input = None
+                input = []
             result.append((event.procedure, input, event.before_checks))
         return result
 
@@ -60,7 +60,7 @@ class FSM(object):
                         checks_before_to_scheme.append(check_body.__name__)
                         # noinspection PyArgumentList
                         check_body(obj)
-            proc(obj, input)
+            proc(obj, *input)
             new_state = self.get_state(obj)
             print(f"Got state: {new_state}")
             try:

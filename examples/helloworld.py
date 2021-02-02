@@ -28,12 +28,9 @@ class HelloWorld2(object):
         self.switch = False
         self.value = 0
 
-    def turn_switch(self, input):
+    def turn_switch(self):
         self.switch = not self.switch
 
     def increase_value(self, input):
         self.value = (self.value + input) % 4
 
-    def get_state(self, obj):
-        result = obj.as_dict()
-        return result

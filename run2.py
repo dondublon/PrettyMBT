@@ -9,7 +9,7 @@ class HelloworldFsmMarkup(FsmMarkup):
         super().__init__()
         self.model = HelloWorld2
         self.add_event(self.model.turn_switch, None, None)
-        self.add_event(self.model.increase_value, [1, 2, 3])
+        self.add_event(self.model.increase_value, [(1,), (2,), (3,)])
         self.state_values['Switch'] = lambda model_obj: model_obj.switch
         self.state_values['Value'] = lambda model_obj: model_obj.value
 
