@@ -5,31 +5,49 @@ from dataclasses import dataclass, asdict
 State = Dict  # dataclass variable: value
 StatePredicate = Callable[[State], bool]
 StateObjFunction = Callable
-Check = Tuple[StatePredicate, Callable]
+SDA = Tuple[StatePredicate, Callable]  # State-Dependent Action
 CheckObj = Tuple[StateObjFunction, Callable]
-Path = List[Tuple[Callable, Any, List[Check]]]
+# Path = List[Tuple[Callable, Any, List[Check]]]
+
 # For separated model:
 Behavior = object
 GetStateValue = Callable[[Behavior], Any]
 
 
+class PathItem(NamedTuple):
+    method: Callable
+    input: Tuple  # input for one method invocation
+    sda_before: List # "sda" means state-dependent actions.
+
+Path = List[PathItem]
+
+# (old_state_num, new_state_num, proc, input, checks_before_to_scheme)
+class Transition(NamedTuple):
+    old_state_num: int
+    new_state_num: int
+    proc: Callable
+    input: Tuple
+    sda_before_str: List[str]
+
 class Event(NamedTuple):
     procedure: Callable
-    inputs: List
-    before_checks: List
+    inputs: List[State]
+    sda_before: List[SDA]  # "sda" means state-dependent actions.
 
 
 # TODO declare
-WalkResult = Any
+class WalkResult(NamedTuple):
+    states: List
+    transitions: List[Transition]
 
 
 class FSM(object):
     def __init__(self):
         self.events: List[Event] = []
 
-    def event(self, inputs: List = None, before_checks: List[Check] = None):
+    def event(self, inputs: List = None, sda_before: List[SDA] = None):
         def inner_event(func):
-            self.events.append(Event(func, inputs, before_checks))
+            self.events.append(Event(func, inputs, sda_before))
             return func
 
         return inner_event
@@ -38,17 +56,17 @@ class FSM(object):
         result = []  # TODO do as generator
         for i in range(length):
             # event_proc, inputs, before_checks = choice(self.events)
-            event = choice(self.events)
+            event:Event = choice(self.events)
             if event.inputs:
                 input = choice(event.inputs)
             else:
                 input = []
-            result.append((event.procedure, input, event.before_checks))
+            result.append(PathItem(event.procedure, input, event.sda_before))
         return result
 
     def walk(self, obj: dataclass, path: Path) -> WalkResult:
         unique_states: List[State] = []
-        transitions: List[Tuple[int, int, Callable, Any, List[str]]] = []
+        transitions: List[Transition] = []
         state0 = self.get_state(obj)
         unique_states.append(state0)
         for proc, input, before_checks in path:
@@ -71,11 +89,11 @@ class FSM(object):
             except ValueError:
                 unique_states.append(new_state)
                 new_state_num = len(unique_states) - 1
-            transition = (old_state_num, new_state_num, proc, input, checks_before_to_scheme)
+            transition = Transition(old_state_num, new_state_num, proc, input, checks_before_to_scheme)
             if transition not in transitions:
                 transitions.append(transition)
 
-        return unique_states, transitions
+        return WalkResult(unique_states, transitions)
 
     def get_state(self, obj: dataclass):
         result = asdict(obj)
@@ -114,9 +132,9 @@ class FsmMarkup(FSM):
         result = {field: get_state_value(obj) for field, get_state_value in self.state_values.items()}
         return result
 
-    def add_event(self, class_method, inputs: List = None, checks_before: List[CheckObj] = None):
-        # TODO checks before
-        self.events.append(Event(class_method, inputs, checks_before))
+    def add_event(self, class_method, inputs: List = None, sda_before: List[CheckObj] = None):
+        """:param sda_before : "sda" meand state-dependent actions."""
+        self.events.append(Event(class_method, inputs, sda_before))
 
     def get_state(self, obj):
         result = self.asdict(obj)
