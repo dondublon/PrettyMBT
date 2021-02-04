@@ -1,15 +1,16 @@
 from src.fsm_markup import *
 
-@ModelDecorator
+@Model
 class WorkingClass(object):
-    @ModelDecorator.state_value("My state value")
+    @Model.state_value("My state value")
     def my_state_value(self):
+        print("self", self)
         return 18
 
     def additional_func(self):
         print("I'm additional")
 
-    @ModelDecorator.conditional_run([my_state_value.between(16, 17), my_state_value.bool()], additional_func, "or")
+    @Model.conditional_run([my_state_value.between(16, 17), my_state_value.bool()], additional_func, "or")
     def working_method(self, msg):
         print(f"I'm working with {msg}! ")
         return f"I worked {msg}"

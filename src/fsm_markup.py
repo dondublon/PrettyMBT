@@ -1,51 +1,70 @@
 class Comparator(object):
-    def __init__(self, get_state_value, *args, **kwargs):
+    def __init__(self, get_state_value, name, *args, **kwargs):
         self.get_state_value = get_state_value
+        self.name = name
 
     def compare(self, obj):
         raise NotImplementedError("Must inherit")
 
+    def to_string(self):
+        raise NotImplementedError("Must inherit")
+
 
 class Equal(Comparator):
-    def __init__(self, get_state_value, equal_to):
-        super().__init__(get_state_value, equal_to)
+    def __init__(self, get_state_value, name, equal_to):
+        super().__init__(get_state_value, name, equal_to)
         self.equal_to = equal_to
 
     def compare(self, obj):
         return self.get_state_value(obj) == self.equal_to
 
+    def to_string(self):
+        return f'{self.name} < {self.equal_to}'
+
 
 class Between(Comparator):
-    def __init__(self, get_state_value, value1, value2):
-        super().__init__(get_state_value, value1, value2)
+    def __init__(self, get_state_value, name, value1, value2):
+        super().__init__(get_state_value, name, value1, value2)
         self.value1 = value1
         self.value2 = value2
 
     def compare(self, obj):
         return self.value1 <= self.get_state_value(obj) <= self.value2
 
+    def to_string(self):
+        return f'{self.value1} < {self.name} < {self.value2}'
+
 
 class Less(Comparator):
-    def __init__(self, get_state_value, compare_to):
-        super().__init__(get_state_value, compare_to)
+    def __init__(self, get_state_value, name, compare_to):
+        super().__init__(get_state_value, name, compare_to)
         self.compare_to = compare_to
 
     def compare(self, obj):
         return self.get_state_value(obj) < self.compare_to
 
+    def to_string(self):
+        return f'{self.name} < {self.compare_to}'
+
 
 class Greater(Comparator):
-    def __init__(self, get_state_value, compare_to):
-        super().__init__(get_state_value, compare_to)
+    def __init__(self, get_state_value, name, compare_to):
+        super().__init__(get_state_value, name, compare_to)
         self.compare_to = compare_to
 
     def compare(self, obj):
         return self.get_state_value(obj) > self.compare_to
 
+    def to_string(self):
+        return f'{self.name} > {self.compare_to}'
+
 
 class Bool(Comparator):
     def compare(self, obj):
         return bool(self.get_state_value(obj))
+
+    def to_string(self):
+        return f'{self.name} is True'
 
 
 class ConditionalRunner:
@@ -55,6 +74,7 @@ class ConditionalRunner:
         self.conditions_list = conditions_list
         self.additional_func = additional_func
         self.working_method = working_method
+        self.__name__ = self.working_method.__name__  #used in dumping
 
     def __call__(self, *args, **kwargs):
         if self.logic_mode == "and":
@@ -69,6 +89,12 @@ class ConditionalRunner:
                     self.additional_func(self.obj)
                     break
         return self.working_method(self.obj, *args, **kwargs)
+
+    def conditions_as_str(self):
+        result = []
+        for condition in self.conditions_list:
+            result.append(condition.to_string())
+        return result
 
 
 class ConditionalRunWrapper:
@@ -97,19 +123,20 @@ class StateValueInternal(object):
         self.get_state_value = get_state_value
 
     def equal(self, compare_to):
-        return Equal(self.get_state_value, compare_to)
+        return Equal(self.get_state_value, self.name, compare_to)
 
     def between(self, value1, value2):
-        return Between(self.get_state_value, value1, value2)
+        return Between(self.get_state_value, self.name, value1, value2)
 
     def less(self, compare_to):
-        return Less(self.get_state_value, compare_to)
+        return Less(self.get_state_value, self.name, compare_to)
 
     def greater(self, compare_to):
-        return Greater(self.get_state_value, compare_to)
+        return Greater(self.get_state_value, self.name, compare_to)
 
     def bool(self):
-        return Bool(self.get_state_value)
+        return Bool(self.get_state_value, self.name)
+
 
 class StateValueWrapper(object):
     def __init__(self, name):
@@ -119,17 +146,27 @@ class StateValueWrapper(object):
         return StateValueInternal(self.name, get_state_value)
 
 
-class ModelDecorator(object):
+class Model(object):
     def __init__(self, class_):
         self.class_ = class_
 
     def __call__(self, *args, **kwargs):
         obj = self.class_(*args, **kwargs)
-        for attr_name in dir(obj):
-            attr = getattr(obj, attr_name)
-            if isinstance(attr, ConditionalRunWrapper):
-                attr.obj = obj
+        for attr in self.enumerate_decorators(ConditionalRunner):
+            attr.obj = obj
         return obj
+
+    def enumerate_state_values(self):
+        yield from self.enumerate_decorators(StateValueInternal)
+
+    def enumerate_decorators(self, decorator_class):
+        for attr_name in dir(self.class_):
+            try:
+                attr = getattr(self.class_, attr_name)
+            except:
+                attr = '-'
+            if isinstance(attr, decorator_class):
+                yield attr
 
     @staticmethod
     def conditional_run(comparison_list, additional_func, logic_mode='and'):

@@ -1,6 +1,7 @@
 from typing import List, Tuple, Dict, Callable, Any, NamedTuple
 from random import choice
 from dataclasses import dataclass, asdict
+from external_libs.pretty_mbt.src.fsm_markup import ConditionalRunner
 
 State = Dict  # dataclass variable: value
 StatePredicate = Callable[[State], bool]
@@ -17,7 +18,6 @@ GetStateValue = Callable[[Behavior], Any]
 class PathItem(NamedTuple):
     method: Callable
     input: Tuple  # input for one method invocation
-    sda_before: List # "sda" means state-dependent actions.
 
 Path = List[PathItem]
 
@@ -61,7 +61,7 @@ class FSM(object):
                 input = choice(event.inputs)
             else:
                 input = []
-            result.append(PathItem(event.procedure, input, event.sda_before))
+            result.append(PathItem(event.procedure, input))
         return result
 
     def walk(self, obj: dataclass, path: Path) -> WalkResult:
@@ -69,18 +69,18 @@ class FSM(object):
         transitions: List[Transition] = []
         state0 = self.get_state(obj)
         unique_states.append(state0)
-        for proc, input, before_checks in path:
+        for proc, input in path:
             old_state = self.get_state(obj)
             old_state_num = unique_states.index(old_state)
             print(f"Executing {proc}/{input}")
             checks_before_to_scheme = []
-            if before_checks:
-                for check_state, check_body in before_checks:
-                    if check_state(obj):
-                        checks_before_to_scheme.append(check_body.__name__)
-                        # noinspection PyArgumentList
-                        check_body(obj)
-            proc(obj, *input)
+            if isinstance(proc, ConditionalRunner):
+                # we won't execute working method, just collect the conditions for scheme
+                for condition_str in proc.conditions_as_str():
+                    checks_before_to_scheme.append(condition_str)
+                proc.working_method(obj, *input)
+            else:
+                proc(obj, *input)
             new_state = self.get_state(obj)
             print(f"Got state: {new_state}")
             try:
@@ -99,6 +99,8 @@ class FSM(object):
         result = asdict(obj)
         return result
 
+
+class Dumper(object):
     def get_plantuml(self, walk_result: WalkResult):
         yield '@startuml'
         yield '[*] --> State_0'
@@ -126,7 +128,6 @@ class FsmMarkup(FSM):
         self.state_values: Dict[str, GetStateValue] = {}
         super().__init__()  # <- self.events here
         # Fill self.events here in ancestors.
-        # Fill self.state_values here
 
     def asdict(self, obj) -> Dict:
         result = {field: get_state_value(obj) for field, get_state_value in self.state_values.items()}
