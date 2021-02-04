@@ -1,14 +1,51 @@
 class Comparator(object):
-    def __init__(self, get_state_value):
+    def __init__(self, get_state_value, *args, **kwargs):
         self.get_state_value = get_state_value
 
-    def compare(self, obj, compare_to):
+    def compare(self, obj):
         raise NotImplementedError("Must inherit")
 
 
 class Equal(Comparator):
-    def compare(self, obj, compare_to):
-        return self.get_state_value(obj) == compare_to
+    def __init__(self, get_state_value, equal_to):
+        super().__init__(get_state_value, equal_to)
+        self.equal_to = equal_to
+
+    def compare(self, obj):
+        return self.get_state_value(obj) == self.equal_to
+
+
+class Between(Comparator):
+    def __init__(self, get_state_value, value1, value2):
+        super().__init__(get_state_value, value1, value2)
+        self.value1 = value1
+        self.value2 = value2
+
+    def compare(self, obj):
+        return self.value1 <= self.get_state_value(obj) <= self.value2
+
+
+class Less(Comparator):
+    def __init__(self, get_state_value, compare_to):
+        super().__init__(get_state_value, compare_to)
+        self.compare_to = compare_to
+
+    def compare(self, obj):
+        return self.get_state_value(obj) < self.compare_to
+
+
+class Greater(Comparator):
+    def __init__(self, get_state_value, compare_to):
+        super().__init__(get_state_value, compare_to)
+        self.compare_to = compare_to
+
+    def compare(self, obj):
+        return self.get_state_value(obj) > self.compare_to
+
+
+class Bool(Comparator):
+    def compare(self, obj):
+        return bool(self.get_state_value(obj))
 
 
 class ConditionalRunner:
@@ -21,16 +58,14 @@ class ConditionalRunner:
 
     def __call__(self, *args, **kwargs):
         if self.logic_mode == "and":
-            for get_state_value, compare_to in self.conditions_list:
-                comparator = get_state_value()
-                if not comparator.compare(self.obj, compare_to):
+            for comparator in self.conditions_list:
+                if not comparator.compare(self.obj):
                     break
             else:
                 self.additional_func(self.obj)
         elif self.logic_mode == "or":
-            for get_state_value, compare_to in self.conditions_list:
-                comparator = get_state_value()
-                if comparator.compare(self.obj, compare_to):
+            for comparator in self.conditions_list:
+                if comparator.compare(self.obj):
                     self.additional_func(self.obj)
                     break
         return self.working_method(self.obj, *args, **kwargs)
@@ -61,8 +96,20 @@ class StateValueInternal(object):
         self.name = name
         self.get_state_value = get_state_value
 
-    def equal(self):
-        return Equal(self.get_state_value)
+    def equal(self, compare_to):
+        return Equal(self.get_state_value, compare_to)
+
+    def between(self, value1, value2):
+        return Between(self.get_state_value, value1, value2)
+
+    def less(self, compare_to):
+        return Less(self.get_state_value, compare_to)
+
+    def greater(self, compare_to):
+        return Greater(self.get_state_value, compare_to)
+
+    def bool(self):
+        return Bool(self.get_state_value)
 
 class StateValueWrapper(object):
     def __init__(self, name):
@@ -105,7 +152,7 @@ class WorkingClass(object):
     def additional_func(self):
         print("I'm additional")
 
-    @ModelDecorator.conditional_run([(my_state_value.equal, 16), (my_state_value.equal, 18)], additional_func, "or")
+    @ModelDecorator.conditional_run([my_state_value.between(16, 17), my_state_value.bool()], additional_func, "or")
     def working_method(self, msg):
         print(f"I'm working with {msg}! ")
         return f"I worked {msg}"
