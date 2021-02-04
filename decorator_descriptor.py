@@ -7,13 +7,14 @@ class ConditionalRunner:
         self.working_method = working_method
 
     def __call__(self, *args, **kwargs):
-        if self.get_state_value(self.obj) == self.compare_to:
+        if self.get_state_value.compare(self.obj, self.compare_to):
             self.additional_func(self.obj)
         return self.working_method(self.obj, *args, **kwargs)
 
+
 class ConditionalRunWrapper:
-    def __init__(self, state_value, compare_to, additional_func):
-        self.state_value = state_value
+    def __init__(self, get_state_value, compare_to, additional_func):
+        self.get_state_value = get_state_value
         self.compare_to = compare_to
         self.additional_func = additional_func
         self._obj = None
@@ -28,15 +29,23 @@ class ConditionalRunWrapper:
         self._obj = value
 
     def __call__(self, working_method):
-        return ConditionalRunner(self.obj, self.state_value, self.compare_to, self.additional_func, working_method)
+        return ConditionalRunner(self.obj, self.get_state_value, self.compare_to, self.additional_func, working_method)
 
+
+class StateValueInternal(object):
+    def __init__(self, name, function):
+        self.name = name
+        self.function = function
+
+    def compare(self, obj, compare_to):
+        return self.function(obj) == compare_to
 
 class StateValueWrapper(object):
     def __init__(self, name):
         self.name = name
 
-    def __call__(self, *args, **kwargs):
-        pass
+    def __call__(self, function):
+        return StateValueInternal(self.name, function)
 
 
 class ModelDecorator(object):
@@ -52,8 +61,8 @@ class ModelDecorator(object):
         return obj
 
     @staticmethod
-    def conditional_run(state_value, compare_to, additional_func):
-        return ConditionalRunWrapper(state_value, compare_to, additional_func)
+    def conditional_run(get_state_value, compare_to, additional_func):
+        return ConditionalRunWrapper(get_state_value, compare_to, additional_func)
 
     @staticmethod
     def state_value(name):
@@ -61,9 +70,9 @@ class ModelDecorator(object):
 
 @ModelDecorator
 class WorkingClass(object):
+    @ModelDecorator.state_value("My state value")
     def my_state_value(self):
         return 16
-
 
     def additional_func(self):
         print("I'm additional")
