@@ -1,3 +1,16 @@
+class Comparator(object):
+    def __init__(self, get_state_value):
+        self.get_state_value = get_state_value
+
+    def compare(self, obj, compare_to):
+        raise NotImplementedError("Must inherit")
+
+
+class Equal(Comparator):
+    def compare(self, obj, compare_to):
+        return self.get_state_value(obj) == compare_to
+
+
 class ConditionalRunner:
     def __init__(self, obj, get_state_value, compare_to, additional_func, working_method):
         self.obj = obj
@@ -7,7 +20,8 @@ class ConditionalRunner:
         self.working_method = working_method
 
     def __call__(self, *args, **kwargs):
-        if self.get_state_value.compare(self.obj, self.compare_to):
+        comparator = self.get_state_value()
+        if comparator.compare(self.obj, self.compare_to):
             self.additional_func(self.obj)
         return self.working_method(self.obj, *args, **kwargs)
 
@@ -33,19 +47,19 @@ class ConditionalRunWrapper:
 
 
 class StateValueInternal(object):
-    def __init__(self, name, function):
+    def __init__(self, name, get_state_value):
         self.name = name
-        self.function = function
+        self.get_state_value = get_state_value
 
-    def compare(self, obj, compare_to):
-        return self.function(obj) == compare_to
+    def equal(self):
+        return Equal(self.get_state_value)
 
 class StateValueWrapper(object):
     def __init__(self, name):
         self.name = name
 
-    def __call__(self, function):
-        return StateValueInternal(self.name, function)
+    def __call__(self, get_state_value):
+        return StateValueInternal(self.name, get_state_value)
 
 
 class ModelDecorator(object):
@@ -72,15 +86,12 @@ class ModelDecorator(object):
 class WorkingClass(object):
     @ModelDecorator.state_value("My state value")
     def my_state_value(self):
-        return 16
+        return 18
 
     def additional_func(self):
         print("I'm additional")
 
-    # @my_state_value.equal(17).run(additional_func)
-    # @TextContract("my_state_value == 16", additional_func)
-    # @class_decorator
-    @ModelDecorator.conditional_run(my_state_value, 16, additional_func)
+    @ModelDecorator.conditional_run(my_state_value.equal, 16, additional_func)
     def working_method(self, msg):
         print(f"I'm working with {msg}! ")
         return f"I worked {msg}"
