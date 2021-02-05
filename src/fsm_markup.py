@@ -77,18 +77,22 @@ class ConditionalRunner:
         self.__name__ = self.working_method.__name__  #used in dumping
 
     def __call__(self, *args, **kwargs):
+        if self.check(self.obj):
+            self.additional_func(self.obj)
+        return self.working_method(self.obj, *args, **kwargs)
+
+    def check(self, obj) -> bool:
         if self.logic_mode == "and":
             for comparator in self.conditions_list:
-                if not comparator.compare(self.obj):
-                    break
+                if not comparator.compare(obj):
+                    return False
             else:
-                self.additional_func(self.obj)
+                return True
         elif self.logic_mode == "or":
             for comparator in self.conditions_list:
-                if comparator.compare(self.obj):
-                    self.additional_func(self.obj)
-                    break
-        return self.working_method(self.obj, *args, **kwargs)
+                if comparator.compare(obj):
+                    return True
+            return False
 
     def conditions_as_str(self):
         result = []
