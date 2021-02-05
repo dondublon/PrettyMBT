@@ -75,9 +75,10 @@ class FSM(object):
             print(f"Executing {proc}/{input}")
             checks_before_to_scheme = []
             if isinstance(proc, ConditionalRunner):
+                assert proc.obj == obj
                 # we won't execute working method, just collect the conditions for scheme
-                for condition_str in proc.conditions_as_str():
-                    checks_before_to_scheme.append(condition_str)
+                if proc.check(obj):
+                    checks_before_to_scheme.append(proc.action_as_str())
                 proc.working_method(obj, *input)
             else:
                 proc(obj, *input)
@@ -105,16 +106,16 @@ class Dumper(object):
         yield '@startuml'
         yield '[*] --> State_0'
         # TODO dump initial state to the black circle
-        for state_num, state in enumerate(walk_result[0]):
+        for state_num, state in enumerate(walk_result.states):
             for state_var, state_value in state.items():
                 yield f'State_{state_num} : {state_var}={state_value}'
-        for transition in walk_result[1]:
-            in_vertex, out_vertex, proc, input, checks_before = transition
+        for transition in walk_result.transitions:
+            in_vertex, out_vertex, proc, input, sdas_before = transition
             yield f'State_{in_vertex} --> State_{out_vertex} : {proc.__name__} {input if input else ""}'
-            if checks_before:
+            if sdas_before:
                 yield 'note on link'
-                for check_description in checks_before:
-                    yield f"Check before: {check_description}"
+                for check_description in sdas_before:
+                    yield f"Action before: {check_description}"
                 yield 'end note'
         yield '@enduml'
 
