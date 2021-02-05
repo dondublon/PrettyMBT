@@ -103,6 +103,9 @@ class ConditionalRunner:
     def action_as_str(self):
         return str(self.additional_func.__name__)
 
+    def __str__(self):
+        return f'{self.working_method} (+conditions)'
+
 
 class ConditionalRunWrapper:
     def __init__(self, conditions_list, additional_func, logic_mode):

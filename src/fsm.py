@@ -1,7 +1,7 @@
 from typing import List, Tuple, Dict, Callable, Any, NamedTuple
 from random import choice
 from dataclasses import dataclass, asdict
-from external_libs.pretty_mbt.src.fsm_markup import ConditionalRunner
+from .fsm_markup import ConditionalRunner, Model
 
 State = Dict  # dataclass variable: value
 StatePredicate = Callable[[State], bool]
@@ -16,10 +16,10 @@ GetStateValue = Callable[[Behavior], Any]
 
 
 class PathItem(NamedTuple):
-    method: Callable
+    method: Callable  # method of class.
     input: Tuple  # input for one method invocation
 
-Path = List[PathItem]
+Path = List[PathItem]  #
 
 # (old_state_num, new_state_num, proc, input, checks_before_to_scheme)
 class Transition(NamedTuple):
@@ -123,12 +123,14 @@ class Dumper(object):
 class FsmMarkup(FSM):
     """To subclass for each model. Interface as dataclass.
     """
+    model: Model = None
 
     def __init__(self):
-        self.model = None
-        self.state_values: Dict[str, GetStateValue] = {}
         super().__init__()  # <- self.events here
         # Fill self.events here in ancestors.
+        # TODO universal, move to the parent:
+        attrs = list(self.model.enumerate_state_values())
+        self.state_values = {svi.name: svi.get_state_value for svi in attrs}
 
     def asdict(self, obj) -> Dict:
         result = {field: get_state_value(obj) for field, get_state_value in self.state_values.items()}
@@ -142,3 +144,6 @@ class FsmMarkup(FSM):
         result = self.asdict(obj)
         return result
 
+    @property
+    def model_class(self):
+        return self.model.class_
