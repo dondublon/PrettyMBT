@@ -24,3 +24,6 @@ uml_text = fsm.dump_plantuml(walk_result)
 with open("result.uml", 'w') as uml_file:
     uml_file.writelines(uml_text)
 
+print("I'm going to go elsewhere.")
+for i in range(10):
+    print("Go away forever!")
